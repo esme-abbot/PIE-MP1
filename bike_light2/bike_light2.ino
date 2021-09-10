@@ -316,7 +316,7 @@ void ramp() {
   }
 
 }
-
+ 
 void setAllLEDsAnalog(int val){
     analogWrite(greenLED, val);
     analogWrite(yellowLED, val);
