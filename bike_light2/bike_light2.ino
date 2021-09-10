@@ -16,16 +16,20 @@ bool button_went_back_low = true;
 int pressCounter = 0;
 int mode;
 
-
 // track blink time 
 int blink_start;
 int blink_int = 500;
+
 // track blink modes
 int greenState, blueState, redState, yellowState, whiteState;
 
 // track wave time
 int wave_start;
 int wave_int = 100;
+
+// track twoAndTwo time
+int two_start;
+int two_int = 500;
 
 // track ramp time
 long ramp_start;
@@ -40,6 +44,7 @@ enum states {
   ON,
   BLINK,
   WAVE,
+  TWOANDTWO,
   RAMP
 };
 
@@ -79,6 +84,9 @@ void loop() {
       break;
     case WAVE:
       wave();
+      break;
+    case TWOANDTWO:
+      twoAndTwo();
       break;
     case RAMP:
       ramp();
@@ -274,10 +282,66 @@ void wave() {
   }
   
   if (buttonPress()) { 
-    state = RAMP;
+    state = TWOANDTWO;
+
+void twoAndTwo() {
+  if (prior_state != state) {
+      // green and yellow turn on for 500ms, then turn off and white and blue turn on for 500ms
+    greenState = HIGH;
+    yellowState = HIGH;
+    redState = LOW;
+    whiteState = LOW;
+    blueState = LOW;
+
+    two_start = millis();
+    prior_state = state;
+    Serial.println("Mode: TwoAndTwo");
+
   }
 
+  unsigned long currentMillis = millis(); // counts the time in ms
 
+  // checks if it's been 500ms since the last state change
+  if (currentMillis - two_start >= two_int) {
+    two_start = currentMillis;
+    
+      // switch on or off
+    if (greenState == LOW) {
+      greenState = HIGH;
+    } else {
+      greenState = LOW;
+    }
+    if (yellowState == LOW) {
+      yellowState = HIGH;
+    } else {
+      yellowState = LOW;
+    }
+  
+      redState = LOW;
+
+    if (whiteState == LOW) {
+      whiteState = HIGH;
+    } else {
+      whiteState = LOW;
+    }
+    if (blueState == LOW) {
+      blueState = HIGH;
+    } else {
+      blueState = LOW;
+    }
+
+    // set the LEDs with the States of the variable
+    digitalWrite(greenLED, greenState);
+    digitalWrite(yellowLED, yellowState);
+    digitalWrite(redLED, redState);
+    digitalWrite(whiteLED, whiteState);
+    digitalWrite(blueLED, blueState);
+
+}
+
+if (buttonPress()) {
+  Serial.println("does it get into this loop?");
+  state = RAMP;
 }
 
 
