@@ -17,23 +17,23 @@ int pressCounter = 0;
 int mode;
 
 // track blink time 
-int blink_start;
+long blink_start;
 int blink_int = 500;
 
 // track blink modes
 int greenState, blueState, redState, yellowState, whiteState;
 
 // track wave time
-int wave_start;
+long wave_start;
 int wave_int = 100;
 
 // track twoAndTwo time
-int two_start;
+long two_start;
 int two_int = 500;
 
 // track ramp time
-long ramp_start;
-int ramp_int = 5;
+int ramp_start;
+uint16_t ramp_int = 5;
 int brightness = 0;
 int ramp_slope = 5;
 
@@ -121,6 +121,8 @@ void off() {
    if (state != prior_state) {         // If we are entering the state, do initialization stuff
     prior_state = state;
     Serial.println("Mode: Off");
+    Serial.println(millis());
+
 
   }
   //turns all the LEDs off
@@ -142,6 +144,7 @@ void on() {
    if (state != prior_state) {         // If we are entering the state, do initialization stuff
     prior_state = state; 
     Serial.println("Mode: On");
+    Serial.println(millis());
 
   }
   // turns all the LEDs on
@@ -170,6 +173,7 @@ void blink() {
     blink_start = millis();
     prior_state = state;
     Serial.println("Mode: Blink");
+    Serial.println(millis());
 
   }
 
@@ -228,6 +232,7 @@ void wave() {
     // enter the state
     prior_state = state;
     Serial.println("Mode: Wave");
+    Serial.println(millis());
 
     // start counting up for wave
     wave_start = millis();
@@ -283,7 +288,8 @@ void wave() {
   
   if (buttonPress()) { 
     state = TWOANDTWO;
-
+  }
+}
 void twoAndTwo() {
   if (prior_state != state) {
       // green and yellow turn on for 500ms, then turn off and white and blue turn on for 500ms
@@ -296,6 +302,7 @@ void twoAndTwo() {
     two_start = millis();
     prior_state = state;
     Serial.println("Mode: TwoAndTwo");
+    Serial.println(millis());
 
   }
 
@@ -340,15 +347,16 @@ void twoAndTwo() {
 }
 
 if (buttonPress()) {
-  Serial.println("does it get into this loop?");
   state = RAMP;
 }
 
+}
 
 void ramp() {
   if (prior_state != state) {
     prior_state = state;
     Serial.println("Mode: Ramp");
+    Serial.println(millis());
 
     ramp_start = millis();
 
@@ -356,11 +364,11 @@ void ramp() {
     
   }
   
-  ramp_int = scaleRampTime(analogRead(A0));
-
+  ramp_int = scaleRampTime((unsigned int)analogRead(A0));
+  Serial.println(ramp_int);
   
 
-  long t = millis();
+  int t = millis();
 
   if (t - ramp_start >= ramp_int) {
 
@@ -389,14 +397,15 @@ void setAllLEDsAnalog(int val){
     analogWrite(blueLED, val);
 }
 
-int scaleRampTime(int analogOutput) {
+unsigned int scaleRampTime(unsigned int analogOutput) {
 
-    int analogMin = 0;
-    int analogMax = 670;
-    int tMin = 5;
-    int tMax = 100;
+    uint16_t analogMin = 0;
+    uint16_t analogMax = 670;
+    uint16_t tMin = 5;
+    uint16_t tMax = 150s;
     analogOutput = max(analogMin, analogOutput);
     analogOutput = min(analogMax, analogOutput);
-    return (analogOutput - analogMin) * (tMax - tMin) / (analogMax - analogMin) + tMin;
+    //Serial.println(analogOutput);
+    return (analogOutput) * (uint32_t)(tMax - tMin) / (analogMax) + tMin;
 
 }
