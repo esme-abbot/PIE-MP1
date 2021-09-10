@@ -1,9 +1,9 @@
 // explains which LED is in which pin
-int greenLED = 13;
-int yellowLED = 12;
-int redLED = 11;
-int whiteLED = 10;
-int blueLED = 9;
+int greenLED = 11;
+int yellowLED = 10;
+int redLED = 9;
+int whiteLED = 6;
+int blueLED = 5;
 
 // define button digital pin
 const int buttonPin = 7;
@@ -20,15 +20,27 @@ int mode;
 // track blink time 
 int blink_start;
 int blink_int = 500;
-
 // track blink modes
 int greenState, blueState, redState, yellowState, whiteState;
+
+// track wave time
+int wave_start;
+int wave_int = 100;
+
+// track ramp time
+long ramp_start;
+int ramp_int = 5;
+int brightness = 0;
+int ramp_slope = 5;
+
 
 enum states {
   NONE,
   OFF,
   ON,
-  BLINK
+  BLINK,
+  WAVE,
+  RAMP
 };
 
 states state, prior_state;
@@ -47,12 +59,15 @@ void setup() {
   pinMode(whiteLED, OUTPUT);
   pinMode(blueLED, OUTPUT);
 
+  // set up potentiometer inputs
+  pinMode(A0, INPUT);
+  
   prior_state = NONE;
   state = OFF;
 }
 
 void loop() {
-switch (state) {
+  switch (state) {
     case OFF:
       off();
       break;
@@ -61,6 +76,12 @@ switch (state) {
       break;
     case BLINK:
       blink();
+      break;
+    case WAVE:
+      wave();
+      break;
+    case RAMP:
+      ramp();
       break;
   }
 
@@ -91,6 +112,8 @@ void off() {
 
    if (state != prior_state) {         // If we are entering the state, do initialization stuff
     prior_state = state;
+    Serial.println("Mode: Off");
+
   }
   //turns all the LEDs off
   
@@ -99,7 +122,6 @@ void off() {
   digitalWrite(redLED, LOW);
   digitalWrite(whiteLED, LOW);
   digitalWrite(blueLED, LOW);
-  Serial.println("Mode: Off");
 
   if (buttonPress()) {
     state = ON;
@@ -110,7 +132,9 @@ void on() {
 
   
    if (state != prior_state) {         // If we are entering the state, do initialization stuff
-    prior_state = state;
+    prior_state = state; 
+    Serial.println("Mode: On");
+
   }
   // turns all the LEDs on
 
@@ -119,7 +143,6 @@ void on() {
   digitalWrite(redLED, HIGH);
   digitalWrite(whiteLED, HIGH);
   digitalWrite(blueLED, HIGH);
-  Serial.println("Mode: On");
 
   if (buttonPress()) {
     state = BLINK;
@@ -138,6 +161,8 @@ void blink() {
 
     blink_start = millis();
     prior_state = state;
+    Serial.println("Mode: Blink");
+
   }
 
   unsigned long currentMillis = millis(); // counts the time in ms
@@ -183,34 +208,131 @@ void blink() {
 }
 
 if (buttonPress()) {
-  state = OFF;
+  Serial.println("does it get into this loop?");
+  state = WAVE;
 }
 
 
-    Serial.println("Mode: Blink");
 
 }
 void wave() {
-  // all of the LEDs turn on for 500ms before turning off for 500ms
-  int greenState = LOW;
-  int yellowState = LOW;
-  int redState = LOW;
-  int whiteState = LOW;
-  int blueState = LOW;
+  if (prior_state != state){
+    // enter the state
+    prior_state = state;
+    Serial.println("Mode: Wave");
+
+    // start counting up for wave
+    wave_start = millis();
+
+    //initiate all of the LED toggles
+    digitalWrite(greenLED, 0);
+    digitalWrite(yellowLED, 0);
+    digitalWrite(redLED, 0);
+    digitalWrite(whiteLED, 0);
+    digitalWrite(blueLED, 0);
+  }
+  unsigned long t = millis();
   
-  // unsigned long stores larger variables than int
-  unsigned long previousMillis = 0; // time in ms since the LED was updated
+  if (t - wave_start >= wave_int) {
+    wave_start = t;
+    if (digitalRead(greenLED)) {
+      
+      digitalWrite(greenLED, 0);
+      digitalWrite(yellowLED, 1);
+      digitalWrite(redLED, 0);
+      digitalWrite(whiteLED, 0);
+      digitalWrite(blueLED, 0);
+      
+    }
+    else if (digitalRead(yellowLED)) {
+      digitalWrite(greenLED, 0);
+      digitalWrite(yellowLED, 0);
+      digitalWrite(redLED, 1);
+      digitalWrite(whiteLED, 0);
+      digitalWrite(blueLED, 0);
+      
+    } else if (digitalRead(redLED)) {
+      digitalWrite(greenLED, 0);
+      digitalWrite(yellowLED, 0);
+      digitalWrite(redLED, 0);
+      digitalWrite(whiteLED, 1);
+      digitalWrite(blueLED, 0);
+      
+    } else if (digitalRead(whiteLED)) {
+      digitalWrite(greenLED, 0);
+      digitalWrite(yellowLED, 0);
+      digitalWrite(redLED, 0);
+      digitalWrite(whiteLED, 0);
+      digitalWrite(blueLED, 1);
+    } else {
+      digitalWrite(greenLED, 1);
+      digitalWrite(yellowLED, 0);
+      digitalWrite(redLED, 0);
+      digitalWrite(whiteLED, 0);
+      digitalWrite(blueLED, 0);
+    }
+  }
+  
+  if (buttonPress()) { 
+    state = RAMP;
+  }
 
-  // const keeps a variable constant
-  const long interval = 500; //blinking interval
 
-  unsigned long currentMillis = millis(); // counts the time in ms
-
-  // checks if it's been 500ms since the last state change
-  if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
 }
 
-  Serial.println("Mode: Wave");
+
+void ramp() {
+  if (prior_state != state) {
+    prior_state = state;
+    Serial.println("Mode: Ramp");
+
+    ramp_start = millis();
+
+    setAllLEDsAnalog(brightness);
+    
+  }
+  
+  ramp_int = scaleRampTime(analogRead(A0));
+
+  
+
+  long t = millis();
+
+  if (t - ramp_start >= ramp_int) {
+
+    brightness = brightness + ramp_slope;
+
+    if (brightness <= 0 || brightness >= 255) {
+      ramp_slope = -ramp_slope;
+    }
+    
+    setAllLEDsAnalog(brightness);
+    ramp_start = t;
+    
+  }
+
+  if (buttonPress()){
+    state = OFF;
+  }
+
+}
+
+void setAllLEDsAnalog(int val){
+    analogWrite(greenLED, val);
+    analogWrite(yellowLED, val);
+    analogWrite(redLED, val);
+    analogWrite(whiteLED, val);
+    analogWrite(blueLED, val);
+}
+
+int scaleRampTime(int analogOutput) {
+
+    int analogMin = 0;
+    int analogMax = 670;
+    int tMin = 5;
+    int tMax = 100;
+    analogOutput = max(analogMin, analogOutput);
+    analogOutput = min(analogMax, analogOutput);
+    return (analogOutput - analogMin) * (tMax - tMin) / (analogMax - analogMin) + tMin;
 
 }
